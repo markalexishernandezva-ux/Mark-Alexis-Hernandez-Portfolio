@@ -688,3 +688,52 @@ function initPortfolio() {
 })();
 
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initPortfolio)}else{initPortfolio()}
+
+;(function () {
+  // Custom 3D scroll: cards tilt and recede like a drum as they leave the focus line; glass slabs turn with scroll progress.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var root = document.documentElement;
+  var stage = document.createElement('div');
+  stage.id = 'd3-stage'; stage.setAttribute('aria-hidden', 'true');
+  stage.innerHTML = '<i class="slab slab-a"></i><i class="slab slab-b"></i><i class="slab slab-c"></i>';
+  document.body.appendChild(stage);
+  var sel = ['.hero-right', '.proof li', '#about .about-fig', '.svc', '.steps > li', '#tools .grid > *', '.faq details', '.portfolio-item', '#credibility .glass-card', '#contact > .glass-card'];
+  var els = [];
+  sel.forEach(function (s) { [].slice.call(document.querySelectorAll(s)).forEach(function (el) { if (els.indexOf(el) < 0) els.push(el); }); });
+  var vis = new Set(), fine = window.matchMedia('(hover: hover)').matches;
+  els.forEach(function (el) { el.classList.add('d3'); });
+  root.classList.add('d3-on');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) vis.add(e.target); else vis.delete(e.target); }); request(); }, { rootMargin: '25% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+  } else { els.forEach(function (el) { vis.add(el); }); }
+  var ticking = false;
+  function request() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+  function frame() {
+    ticking = false;
+    var vh = window.innerHeight, vw = window.innerWidth, small = vw < 768, A = small ? 4 : 9, B = small ? 2 : 7, Z = small ? 30 : 70;
+    var max = root.scrollHeight - vh;
+    root.style.setProperty('--sp', max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)).toFixed(4) : '0');
+    vis.forEach(function (el) {
+      var r = el.getBoundingClientRect(), k = Math.min(1, 520 / Math.max(r.height, 1));
+      var t = Math.max(-1, Math.min(1, ((r.top + r.height / 2) - vh / 2) / (vh / 2)));
+      var cx = ((r.left + r.width / 2) - vw / 2) / (vw / 2), a = Math.abs(t);
+      var st = el.style;
+      st.setProperty('--rx', (t * A * k).toFixed(2) + 'deg');
+      st.setProperty('--ry', (cx * a * B).toFixed(2) + 'deg');
+      st.setProperty('--tz', (-a * Z).toFixed(1) + 'px');
+      st.setProperty('--s', (1 - a * 0.035).toFixed(4));
+    });
+  }
+  window.addEventListener('scroll', request, { passive: true });
+  window.addEventListener('resize', request);
+  if (fine) {
+    document.addEventListener('pointermove', function (e) {
+      var c = e.target.closest && e.target.closest('.d3'); if (!c) return;
+      var r = c.getBoundingClientRect();
+      c.style.setProperty('--mx', (((e.clientX - r.left) / r.width) - 0.5).toFixed(3));
+      c.style.setProperty('--my', (((e.clientY - r.top) / r.height) - 0.5).toFixed(3));
+    }, { passive: true });
+  }
+  request();
+})();
